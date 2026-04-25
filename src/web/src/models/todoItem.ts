@@ -4,6 +4,20 @@ export enum TodoItemState {
     Done = "done"
 }
 
+export enum Priority {
+    High = "high",
+    Medium = "medium",
+    Low = "low"
+}
+
+export interface Tag {
+    id?: string;
+    name: string;
+    color: string;
+    createdDate?: Date;
+    updatedDate?: Date;
+}
+
 export interface SubTask {
     id: string;
     name: string;
@@ -17,10 +31,12 @@ export interface TodoItem {
     listId: string
     name: string
     state: TodoItemState
+    priority?: Priority
     description?: string
     dueDate?: Date
     completedDate?:Date
     createdDate?: Date
     updatedDate?: Date
     subTasks?: SubTask[]
+    tagIds?: string[]
 }

@@ -8,9 +8,9 @@ from fastapi import HTTPException, Response
 from starlette.requests import Request
 
 from .app import app
-from .models import (CreateUpdateTodoItem, CreateUpdateTodoList,
-                     CreateUpdateSubTask, SubTask, TodoItem, TodoList,
-                     TodoState)
+from .models import (CreateUpdateTag, CreateUpdateTodoItem,
+                     CreateUpdateTodoList, CreateUpdateSubTask, Priority,
+                     SubTask, Tag, TodoItem, TodoList, TodoState)
 
 MAX_SUBTASKS = 10
 
@@ -113,22 +113,48 @@ async def create_list_item(
     return await item.save()
 
 
+def get_priority_order(priority: Optional[Priority]) -> int:
+    if priority == Priority.HIGH:
+        return 0
+    elif priority == Priority.MEDIUM:
+        return 1
+    elif priority == Priority.LOW:
+        return 2
+    return 3
+
+
 @app.get("/lists/{list_id}/items", response_model=List[TodoItem], response_model_by_alias=False)
 async def get_list_items(
     list_id: PydanticObjectId,
     top: Optional[int] = None,
     skip: Optional[int] = None,
+    tagIds: Optional[List[PydanticObjectId]] = None,
 ) -> List[TodoItem]:
     """
     Gets Todo items within the specified list
 
     Optional arguments:
 
-    - **top**: Number of lists to return
-    - **skip**: Number of lists to skip
+    - **top**: Number of items to return
+    - **skip**: Number of items to skip
+    - **tagIds**: Filter by tag IDs (AND logic)
     """
-    query = TodoItem.find(TodoItem.listId == list_id).skip(skip).limit(top)
-    return await query.to_list()
+    query = TodoItem.find(TodoItem.listId == list_id)
+    
+    if tagIds:
+        for tag_id in tagIds:
+            query = query.find(TodoItem.tagIds == tag_id)
+    
+    items = await query.to_list()
+    
+    items.sort(key=lambda x: get_priority_order(x.priority))
+    
+    if skip:
+        items = items[skip:]
+    if top:
+        items = items[:top]
+    
+    return items
 
 
 @app.get("/lists/{list_id}/items/state/{state}", response_model=List[TodoItem], response_model_by_alias=False)
@@ -313,3 +339,94 @@ async def delete_subtask(
     update_parent_state_based_on_subtasks(item)
     item.updatedDate = datetime.utcnow()
     return await item.save()
+
+
+@app.get("/tags", response_model=List[Tag], response_model_by_alias=False)
+async def get_tags(
+    top: Optional[int] = None, skip: Optional[int] = None
+) -> List[Tag]:
+    """
+    Get all tags
+    """
+    query = Tag.all().skip(skip).limit(top)
+    return await query.to_list()
+
+
+@app.post("/tags", response_model=Tag, response_model_by_alias=False, status_code=201)
+async def create_tag(body: CreateUpdateTag, request: Request, response: Response) -> Tag:
+    """
+    Create a new tag
+    """
+    tag = await Tag(**body.dict(), createdDate=datetime.utcnow()).save()
+    response.headers["Location"] = urljoin(str(request.base_url), "tags/{0}".format(str(tag.id)))
+    return tag
+
+
+@app.get("/tags/{tag_id}", response_model=Tag, response_model_by_alias=False)
+async def get_tag(tag_id: PydanticObjectId) -> Tag:
+    """
+    Get tag by ID
+    """
+    tag = await Tag.get(document_id=tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    return tag
+
+
+@app.put("/tags/{tag_id}", response_model=Tag, response_model_by_alias=False)
+async def update_tag(
+    tag_id: PydanticObjectId, body: CreateUpdateTag
+) -> Tag:
+    """
+    Updates a tag by unique identifier
+    """
+    tag = await Tag.get(document_id=tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    await tag.update({"$set": body.dict(exclude_unset=True)})
+    tag.updatedDate = datetime.utcnow()
+    return await tag.save()
+
+
+@app.delete("/tags/{tag_id}", response_class=Response, status_code=204)
+async def delete_tag(tag_id: PydanticObjectId) -> None:
+    """
+    Deletes a tag by unique identifier and removes it from all todo items
+    """
+    tag = await Tag.get(document_id=tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    
+    items_with_tag = await TodoItem.find(TodoItem.tagIds == tag_id).to_list()
+    for item in items_with_tag:
+        item.tagIds = [tid for tid in item.tagIds if tid != tag_id]
+        item.updatedDate = datetime.utcnow()
+        await item.save()
+    
+    await tag.delete()
+
+
+@app.get("/items/reminders/due", response_model=List[TodoItem], response_model_by_alias=False)
+async def get_due_reminders() -> List[TodoItem]:
+    """
+    Get todo items that are due today or overdue and not completed
+    """
+    now = datetime.utcnow()
+    today_start = datetime(now.year, now.month, now.day)
+    today_end = datetime(now.year, now.month, now.day, 23, 59, 59)
+    
+    overdue_items = await TodoItem.find(
+        TodoItem.state != TodoState.DONE,
+        TodoItem.dueDate < today_start
+    ).to_list()
+    
+    today_due_items = await TodoItem.find(
+        TodoItem.state != TodoState.DONE,
+        TodoItem.dueDate >= today_start,
+        TodoItem.dueDate <= today_end
+    ).to_list()
+    
+    all_items = overdue_items + today_due_items
+    all_items.sort(key=lambda x: get_priority_order(x.priority))
+    
+    return all_items

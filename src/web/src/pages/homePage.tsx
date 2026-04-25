@@ -1,13 +1,15 @@
 import { useEffect, useContext, useMemo, useState, Fragment } from 'react';
 import { IconButton, IContextualMenuProps, IIconProps, Stack, Text, Shimmer, ShimmerElementType } from '@fluentui/react';
 import TodoItemListPane from '../components/todoItemListPane';
-import { TodoItem, TodoItemState } from '../models';
+import { TodoItem, TodoItemState, Tag } from '../models';
 import * as itemActions from '../actions/itemActions';
 import * as listActions from '../actions/listActions';
+import * as tagActions from '../actions/tagActions';
 import { TodoContext } from '../components/todoContext';
 import { AppContext } from '../models/applicationState';
 import { ItemActions } from '../actions/itemActions';
 import { ListActions } from '../actions/listActions';
+import { TagActions } from '../actions/tagActions';
 import { stackItemPadding, stackPadding, titleStackStyles } from '../ux/styles';
 import { useNavigate, useParams } from 'react-router-dom';
 import { bindActionCreators } from '../actions/actionCreators';
@@ -20,18 +22,21 @@ const HomePage = () => {
     const actions = useMemo(() => ({
         lists: bindActionCreators(listActions, appContext.dispatch) as unknown as ListActions,
         items: bindActionCreators(itemActions, appContext.dispatch) as unknown as ItemActions,
+        tags: bindActionCreators(tagActions, appContext.dispatch) as unknown as TagActions,
     }), [appContext.dispatch]);
 
     const [isReady, setIsReady] = useState(false)
 
-    // Create default list of does not exist
+    useEffect(() => {
+        actions.tags.list();
+    }, [actions.tags]);
+
     useEffect(() => {
         if (appContext.state.lists?.length === 0) {
             actions.lists.save({ name: 'My List' });
         }
     }, [actions.lists, appContext.state.lists?.length])
 
-    // Select default list on initial load
     useEffect(() => {
         if (appContext.state.lists?.length && !listId && !appContext.state.selectedList) {
             const defaultList = appContext.state.lists[0];
@@ -39,21 +44,18 @@ const HomePage = () => {
         }
     }, [appContext.state.lists, appContext.state.selectedList, listId, navigate])
 
-    // React to selected list changes
     useEffect(() => {
         if (listId && appContext.state.selectedList?.id !== listId) {
             actions.lists.load(listId);
         }
     }, [actions.lists, appContext.state.selectedList, listId])
 
-    // React to selected item change
     useEffect(() => {
         if (listId && itemId && appContext.state.selectedItem?.id !== itemId) {
             actions.items.load(listId, itemId);
         }
     }, [actions.items, appContext.state.selectedItem?.id, itemId, listId])
 
-    // Load items for selected list
     useEffect(() => {
         if (appContext.state.selectedList?.id && !appContext.state.selectedList.items) {
             const loadListItems = async (listId: string) => {
@@ -83,6 +85,13 @@ const HomePage = () => {
         if (item.id) {
             actions.items.remove(item.listId, item);
             navigate(`/lists/${item.listId}`);
+        }
+    }
+
+    const onTagFilterChange = (tagIds: string[]) => {
+        actions.tags.select(tagIds);
+        if (appContext.state.selectedList?.id) {
+            actions.items.list(appContext.state.selectedList.id);
         }
     }
 
@@ -146,12 +155,15 @@ const HomePage = () => {
                 <TodoItemListPane
                     list={appContext.state.selectedList}
                     items={appContext.state.selectedList?.items}
+                    tags={appContext.state.tags}
+                    selectedTagIds={appContext.state.selectedTagIds}
                     selectedItem={appContext.state.selectedItem}
                     disabled={!isReady}
                     onSelect={onItemSelected}
                     onCreated={onItemCreated}
                     onComplete={onItemCompleted}
-                    onDelete={onItemDeleted} />
+                    onDelete={onItemDeleted}
+                    onTagFilterChange={onTagFilterChange} />
             </Stack.Item>
         </Stack >
     );

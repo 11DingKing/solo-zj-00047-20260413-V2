@@ -1,6 +1,6 @@
-import { IIconProps, INavLink, INavLinkGroup, Nav, Stack, TextField } from '@fluentui/react';
-import { FC, ReactElement, useState, FormEvent, MouseEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { IIconProps, INavLink, INavLinkGroup, Nav, Stack, TextField, Pivot, PivotItem } from '@fluentui/react';
+import { FC, ReactElement, useState, FormEvent, MouseEvent, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 import { TodoList } from '../models/todoList';
 import { stackItemPadding } from '../ux/styles';
 
@@ -16,7 +16,32 @@ const iconProps: IIconProps = {
 
 const TodoListMenu: FC<TodoListMenuProps> = (props: TodoListMenuProps): ReactElement => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [newListName, setNewListName] = useState('');
+    const [currentView, setCurrentView] = useState<'list' | 'kanban'>('list');
+
+    useEffect(() => {
+        if (location.pathname.startsWith('/kanban')) {
+            setCurrentView('kanban');
+        } else {
+            setCurrentView('list');
+        }
+    }, [location.pathname]);
+
+    const getViewPrefix = () => {
+        return currentView === 'kanban' ? '/kanban' : '/lists';
+    };
+
+    const onViewChange = (item?: PivotItem) => {
+        if (!item || !props.selectedList?.id) return;
+        
+        const viewKey = item.props.itemKey;
+        if (viewKey === 'kanban') {
+            navigate(`/kanban/${props.selectedList.id}`);
+        } else {
+            navigate(`/lists/${props.selectedList.id}`);
+        }
+    };
 
     const onNavLinkClick = (evt?: MouseEvent<HTMLElement>, item?: INavLink) => {
         evt?.preventDefault();
@@ -25,14 +50,14 @@ const TodoListMenu: FC<TodoListMenuProps> = (props: TodoListMenuProps): ReactEle
             return;
         }
 
-        navigate(`/lists/${item.key}`);
+        navigate(`${getViewPrefix()}/${item.key}`);
     }
 
     const createNavGroups = (lists: TodoList[]): INavLinkGroup[] => {
         const links = lists.map(list => ({
             key: list.id,
             name: list.name,
-            url: `/lists/${list.id}`,
+            url: `${getViewPrefix()}/${list.id}`,
             links: [],
             isExpanded: props.selectedList ? list.id === props.selectedList.id : false
         }));
@@ -61,6 +86,16 @@ const TodoListMenu: FC<TodoListMenuProps> = (props: TodoListMenuProps): ReactEle
 
     return (
         <Stack>
+            <Stack.Item>
+                <Pivot
+                    selectedKey={currentView}
+                    onLinkClick={onViewChange}
+                    styles={{ root: { padding: '0 8px' } }}
+                >
+                    <PivotItem headerText="List" itemKey="list" headerButtonProps={{ 'data-content': 'list' }} />
+                    <PivotItem headerText="Kanban" itemKey="kanban" headerButtonProps={{ 'data-content': 'kanban' }} />
+                </Pivot>
+            </Stack.Item>
             <Stack.Item>
                 <Nav
                     selectedKey={props.selectedList?.id}

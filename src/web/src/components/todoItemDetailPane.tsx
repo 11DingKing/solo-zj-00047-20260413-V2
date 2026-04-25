@@ -1,10 +1,11 @@
-import { Text, DatePicker, Stack, TextField, PrimaryButton, DefaultButton, Dropdown, IDropdownOption, FontIcon, Checkbox, IconButton, IIconProps, MessageBar, MessageBarType } from '@fluentui/react';
-import { useEffect, useState, FC, ReactElement, MouseEvent, FormEvent } from 'react';
-import { TodoItem, TodoItemState, SubTask } from '../models';
+import { Text, DatePicker, Stack, TextField, PrimaryButton, DefaultButton, Dropdown, IDropdownOption, FontIcon, Checkbox, IconButton, IIconProps, MessageBar, MessageBarType, TagPicker, ITag } from '@fluentui/react';
+import { useEffect, useState, FC, ReactElement, MouseEvent, FormEvent, useMemo } from 'react';
+import { TodoItem, TodoItemState, SubTask, Tag, Priority } from '../models';
 import { stackGaps, stackItemMargin, stackItemPadding, titleStackStyles } from '../ux/styles';
 
 interface TodoItemDetailPaneProps {
     item?: TodoItem;
+    tags?: Tag[];
     onEdit: (item: TodoItem) => void
     onCancel: () => void
     onCreateSubTask: (itemId: string, subTask: { name: string; completed?: boolean }) => void
@@ -22,17 +23,45 @@ export const TodoItemDetailPane: FC<TodoItemDetailPaneProps> = (props: TodoItemD
     const [description, setDescription] = useState(props.item?.description);
     const [dueDate, setDueDate] = useState(props.item?.dueDate);
     const [state, setState] = useState(props.item?.state || TodoItemState.Todo);
+    const [priority, setPriority] = useState<Priority | undefined>(props.item?.priority);
+    const [tagIds, setTagIds] = useState<string[]>(props.item?.tagIds || []);
     const [isSubTasksExpanded, setIsSubTasksExpanded] = useState(false);
     const [newSubTaskName, setNewSubTaskName] = useState('');
     const [editingSubTaskId, setEditingSubTaskId] = useState<string | null>(null);
     const [editingSubTaskName, setEditingSubTaskName] = useState('');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    const tagsMap = useMemo(() => {
+        const map: Record<string, Tag> = {};
+        (props.tags || []).forEach(tag => {
+            if (tag.id) map[tag.id] = tag;
+        });
+        return map;
+    }, [props.tags]);
+
+    const allPickerTags = useMemo((): ITag[] => {
+        return (props.tags || []).map(tag => ({
+            key: tag.id || '',
+            name: tag.name
+        }));
+    }, [props.tags]);
+
+    const selectedPickerTags = useMemo((): ITag[] => {
+        return tagIds
+            .map(tagId => {
+                const tag = tagsMap[tagId];
+                return tag ? { key: tag.id || '', name: tag.name } : null;
+            })
+            .filter((t): t is ITag => t !== null);
+    }, [tagIds, tagsMap]);
+
     useEffect(() => {
         setName(props.item?.name || '');
         setDescription(props.item?.description);
         setDueDate(props.item?.dueDate ? new Date(props.item?.dueDate) : undefined);
         setState(props.item?.state || TodoItemState.Todo);
+        setPriority(props.item?.priority);
+        setTagIds(props.item?.tagIds || []);
         setErrorMessage(null);
     }, [props.item]);
 
@@ -50,6 +79,8 @@ export const TodoItemDetailPane: FC<TodoItemDetailPaneProps> = (props: TodoItemD
             description: description,
             dueDate: dueDate,
             state: state,
+            priority: priority,
+            tagIds: tagIds,
         };
 
         props.onEdit(todoItem);
@@ -65,8 +96,19 @@ export const TodoItemDetailPane: FC<TodoItemDetailPaneProps> = (props: TodoItemD
         }
     }
 
+    const onPriorityChange = (_evt: FormEvent<HTMLDivElement>, value?: IDropdownOption) => {
+        if (value) {
+            setPriority(value.key as Priority);
+        }
+    }
+
     const onDueDateChange = (date: Date | null | undefined) => {
         setDueDate(date || undefined);
+    }
+
+    const onTagPickerChange = (_event: React.FormEvent<HTMLDivElement>, selectedItems?: ITag[]) => {
+        const ids = (selectedItems || []).map(t => t.key as string);
+        setTagIds(ids);
     }
 
     const toggleSubTasksExpanded = () => {
@@ -127,6 +169,12 @@ export const TodoItemDetailPane: FC<TodoItemDetailPaneProps> = (props: TodoItemD
         { key: TodoItemState.Done, text: 'Done' },
     ];
 
+    const priorityOptions: IDropdownOption[] = [
+        { key: Priority.High, text: 'High' },
+        { key: Priority.Medium, text: 'Medium' },
+        { key: Priority.Low, text: 'Low' },
+    ];
+
     const subTasks = props.item?.subTasks || [];
     const hasSubTasks = subTasks.length > 0;
 
@@ -142,7 +190,16 @@ export const TodoItemDetailPane: FC<TodoItemDetailPaneProps> = (props: TodoItemD
                         <TextField label="Name" placeholder="Item name" required value={name} onChange={(_e, value) => setName(value || '')} />
                         <TextField label="Description" placeholder="Item description" multiline size={20} value={description || ''} onChange={(_e, value) => setDescription(value)} />
                         <Dropdown label="State" options={todoStateOptions} required selectedKey={state} onChange={onStateChange} />
+                        <Dropdown label="Priority" options={priorityOptions} selectedKey={priority} onChange={onPriorityChange} placeholder="Select priority" />
                         <DatePicker label="Due Date" placeholder="Due date" value={dueDate} onSelectDate={onDueDateChange} />
+                        <TagPicker
+                            label="Tags"
+                            onResolveSuggestions={() => allPickerTags}
+                            selectedItems={selectedPickerTags}
+                            onChange={onTagPickerChange}
+                            placeholder="Select tags..."
+                            inputProps={{ 'aria-label': 'Tag picker' }}
+                        />
                     </Stack.Item>
 
                     <Stack.Item tokens={stackItemMargin}>

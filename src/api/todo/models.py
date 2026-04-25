@@ -56,6 +56,24 @@ class TodoState(Enum):
     DONE = "done"
 
 
+class Priority(Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class Tag(Document):
+    name: str
+    color: str
+    createdDate: Optional[datetime] = None
+    updatedDate: Optional[datetime] = None
+
+
+class CreateUpdateTag(BaseModel):
+    name: str
+    color: str
+
+
 class SubTask(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
@@ -69,19 +87,23 @@ class TodoItem(Document):
     name: str
     description: Optional[str] = None
     state: Optional[TodoState] = None
+    priority: Optional[Priority] = None
     dueDate: Optional[datetime] = None
     completedDate: Optional[datetime] = None
     createdDate: Optional[datetime] = None
     updatedDate: Optional[datetime] = None
     subTasks: List[SubTask] = []
+    tagIds: List[PydanticObjectId] = []
 
 
 class CreateUpdateTodoItem(BaseModel):
     name: str
     description: Optional[str] = None
     state: Optional[TodoState] = None
+    priority: Optional[Priority] = None
     dueDate: Optional[datetime] = None
     completedDate: Optional[datetime] = None
+    tagIds: Optional[List[PydanticObjectId]] = None
 
 
 class CreateUpdateSubTask(BaseModel):
@@ -89,4 +111,4 @@ class CreateUpdateSubTask(BaseModel):
     completed: Optional[bool] = None
 
 
-__beanie_models__ = [TodoList, TodoItem]
+__beanie_models__ = [TodoList, TodoItem, Tag]
