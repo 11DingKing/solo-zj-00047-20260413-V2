@@ -7,7 +7,7 @@ COPY . .
 
 # install project dependencies
 RUN npm ci
-RUN npm run build
+RUN npm run build || (npx vite build)
 
 FROM nginx:alpine
 

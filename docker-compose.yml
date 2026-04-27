@@ -1,0 +1,41 @@
+services:
+  mongodb:
+    image: mongo:6
+    container_name: todo47-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./src/api
+      dockerfile: Dockerfile
+    container_name: todo47-backend
+    ports:
+      - "3100:3100"
+    environment:
+      - AZURE_COSMOS_CONNECTION_STRING=mongodb://mongodb:27017
+      - AZURE_COSMOS_DATABASE_NAME=Todo
+      - API_ENVIRONMENT=develop
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./src/web
+      dockerfile: Dockerfile
+    container_name: todo47-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

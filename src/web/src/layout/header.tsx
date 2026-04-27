@@ -1,4 +1,4 @@
-import { FontIcon, getTheme, IconButton, IIconProps, IStackStyles, mergeStyles, Persona, PersonaSize, Stack, Text, Badge, BadgeSize, Callout, List, Separator } from '@fluentui/react';
+import { FontIcon, getTheme, IconButton, IIconProps, IStackStyles, mergeStyles, Persona, PersonaSize, Stack, Text, Callout, Separator } from '@fluentui/react';
 import { FC, ReactElement, useState, useContext, useEffect, useMemo } from 'react';
 import { TodoContext } from '../components/todoContext';
 import { AppContext, TodoItem, Priority } from '../models';
@@ -129,13 +129,9 @@ const Header: FC = (): ReactElement => {
                             onClick={onReminderButtonClick}
                         />
                         {totalCount > 0 && (
-                            <Badge
-                                size={BadgeSize.small}
-                                count={totalCount}
-                                styles={{
-                                    root: { position: 'absolute', top: -4, right: -4 }
-                                }}
-                            />
+                            <span style={{ position: 'absolute', top: -4, right: -4, background: '#d13438', color: '#fff', borderRadius: '50%', width: 18, height: 18, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
+                                {totalCount}
+                            </span>
                         )}
                     </div>
                     <IconButton aria-label="Settings" iconProps={{ iconName: "Settings", ...iconProps }} />
