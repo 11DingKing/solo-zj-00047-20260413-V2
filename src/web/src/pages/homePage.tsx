@@ -67,8 +67,12 @@ const HomePage = () => {
         }
     }, [actions.items, appContext.state.selectedList?.id, appContext.state.selectedList?.items])
 
-    const onItemCreated = async (item: TodoItem) => {
-        return await actions.items.save(item.listId, item);
+    const onItemCreated = async (item: TodoItem): Promise<TodoItem> => {
+        const createdItem = await actions.items.save(item.listId, item);
+        if (appContext.state.selectedList?.id) {
+            await actions.items.list(appContext.state.selectedList.id);
+        }
+        return createdItem;
     }
 
     const onItemCompleted = (item: TodoItem) => {

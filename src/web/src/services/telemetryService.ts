@@ -8,7 +8,7 @@ const plugin = new ReactPlugin();
 let applicationInsights: ApplicationInsights;
 export const reactPlugin = plugin;
 
-export const getApplicationInsights = (): ApplicationInsights => {
+export const getApplicationInsights = (): ApplicationInsights | null => {
     const browserHistory = createBrowserHistory({ window: window });
     if (applicationInsights) {
         return applicationInsights;
@@ -26,10 +26,10 @@ export const getApplicationInsights = (): ApplicationInsights => {
         }
     }
 
-    applicationInsights = new ApplicationInsights(ApplicationInsightsConfig);
     try {
-        applicationInsights.loadAppInsights();
-        applicationInsights.addTelemetryInitializer((telemetry: ITelemetryItem) => {
+        const ai = new ApplicationInsights(ApplicationInsightsConfig);
+        ai.loadAppInsights();
+        ai.addTelemetryInitializer((telemetry: ITelemetryItem) => {
             if (!telemetry) {
                 return;
             }
@@ -37,9 +37,10 @@ export const getApplicationInsights = (): ApplicationInsights => {
                 telemetry.tags['ai.cloud.role'] = "webui";
             }
         });
+        applicationInsights = ai;
     } catch(err) {
-        // TODO - proper logging for web
         console.error("ApplicationInsights setup failed, ensure environment variable 'VITE_APPLICATIONINSIGHTS_CONNECTION_STRING' has been set.", err);
+        applicationInsights = null as unknown as ApplicationInsights;
     }
 
     return applicationInsights;

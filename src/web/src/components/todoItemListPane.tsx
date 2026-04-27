@@ -11,7 +11,7 @@ interface TodoItemListPaneProps {
     selectedTagIds?: string[]
     selectedItem?: TodoItem;
     disabled: boolean
-    onCreated: (item: TodoItem) => void
+    onCreated: (item: TodoItem) => void | Promise<TodoItem>
     onDelete: (item: TodoItem) => void
     onComplete: (item: TodoItem) => void
     onSelect: (item?: TodoItem) => void
@@ -167,17 +167,29 @@ const TodoItemListPane: FC<TodoItemListPaneProps> = (props: TodoItemListPaneProp
         },
     ]
 
-    const onFormSubmit = (evt: FormEvent<HTMLFormElement>) => {
+    const [isCreating, setIsCreating] = useState(false);
+
+    const onFormSubmit = async (evt: FormEvent<HTMLFormElement>) => {
         evt.preventDefault();
 
-        if (newItemName && props.onCreated) {
+        if (newItemName && props.onCreated && !isCreating) {
+            setIsCreating(true);
             const item: TodoItem = {
                 name: newItemName,
                 listId: props.list?.id || '',
                 state: TodoItemState.Todo,
             }
-            props.onCreated(item);
-            setNewItemName('');
+            try {
+                const result = props.onCreated(item);
+                if (result instanceof Promise) {
+                    await result;
+                }
+                setNewItemName('');
+            } catch (error) {
+                console.error('Failed to create todo item:', error);
+            } finally {
+                setIsCreating(false);
+            }
         }
     }
 
