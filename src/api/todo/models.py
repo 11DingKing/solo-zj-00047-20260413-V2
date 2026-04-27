@@ -3,10 +3,15 @@ from enum import Enum
 from typing import List, Optional
 from uuid import uuid4
 
-from azure.identity import DefaultAzureCredential
-from azure.keyvault.secrets import SecretClient
 from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, BaseSettings, Field
+
+try:
+    from azure.identity import DefaultAzureCredential
+    from azure.keyvault.secrets import SecretClient
+    AZURE_KEYVAULT_AVAILABLE = True
+except ImportError:
+    AZURE_KEYVAULT_AVAILABLE = False
 
 def keyvault_name_as_attr(name: str) -> str:
     return name.replace("-", "_").upper()
@@ -17,7 +22,7 @@ class Settings(BaseSettings):
         super().__init__(*args, **kwargs)
 
         # Load secrets from keyvault
-        if self.AZURE_KEY_VAULT_ENDPOINT:
+        if AZURE_KEYVAULT_AVAILABLE and self.AZURE_KEY_VAULT_ENDPOINT:
             credential = DefaultAzureCredential()
             keyvault_client = SecretClient(self.AZURE_KEY_VAULT_ENDPOINT, credential)
             for secret in keyvault_client.list_properties_of_secrets():

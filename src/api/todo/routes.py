@@ -108,7 +108,8 @@ async def create_list_item(
     """
     Creates a new Todo item within a list
     """
-    item = TodoItem(listId=list_id, **body.dict(), createdDate=datetime.utcnow(), subTasks=[])
+    item_data = body.dict(exclude_none=True)
+    item = TodoItem(listId=list_id, **item_data, createdDate=datetime.utcnow(), subTasks=[])
     response.headers["Location"] = urljoin(str(request.base_url), "lists/{0}/items/{1}".format(str(list_id), str(item.id)))
     return await item.save()
 

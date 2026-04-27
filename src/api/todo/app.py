@@ -1,14 +1,19 @@
 import motor
-from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
 from beanie import init_beanie
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 import os
 from pathlib import Path
+
+try:
+    from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    AZURE_TELEMETRY_AVAILABLE = True
+except ImportError:
+    AZURE_TELEMETRY_AVAILABLE = False
 
 # Use API_ALLOW_ORIGINS env var with comma separated urls like
 # `http://localhost:300, http://otherurl:100`
@@ -55,7 +60,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if settings.APPLICATIONINSIGHTS_CONNECTION_STRING:
+if AZURE_TELEMETRY_AVAILABLE and settings.APPLICATIONINSIGHTS_CONNECTION_STRING:
     exporter = AzureMonitorTraceExporter.from_connection_string(
         settings.APPLICATIONINSIGHTS_CONNECTION_STRING
     )

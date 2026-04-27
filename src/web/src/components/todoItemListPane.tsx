@@ -83,6 +83,7 @@ const TodoItemListPane: FC<TodoItemListPaneProps> = (props: TodoItemListPaneProp
     const [items, setItems] = useState(createListItems(props.items || []));
     const [selectedItems, setSelectedItems] = useState<TodoItem[]>([]);
     const [isDoneCategoryCollapsed, setIsDoneCategoryCollapsed] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
 
     const tagsMap = useMemo(() => {
         const map: Record<string, Tag> = {};
@@ -166,8 +167,6 @@ const TodoItemListPane: FC<TodoItemListPaneProps> = (props: TodoItemListPaneProp
             isCollapsed: isDoneCategoryCollapsed
         },
     ]
-
-    const [isCreating, setIsCreating] = useState(false);
 
     const createItem = async () => {
         if (newItemName && props.onCreated && !isCreating && !props.disabled) {
