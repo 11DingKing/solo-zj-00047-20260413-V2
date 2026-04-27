@@ -1,8 +1,16 @@
 import { ComponentType, ComponentClass } from 'react';
-import { reactPlugin } from '../services/telemetryService';
+import { reactPlugin, getApplicationInsights, isApplicationInsightsEnabled } from '../services/telemetryService';
 import { withAITracking } from '@microsoft/applicationinsights-react-js';
 
 
-const withApplicationInsights = (component: ComponentType<unknown>, componentName: string): ComponentClass<ComponentType<unknown>, unknown> => withAITracking<typeof component>(reactPlugin, component, componentName);
+const withApplicationInsights = (component: ComponentType<unknown>, componentName: string): ComponentClass<ComponentType<unknown>, unknown> | ComponentType<unknown> => {
+    getApplicationInsights();
+    
+    if (!isApplicationInsightsEnabled()) {
+        return component;
+    }
+    
+    return withAITracking<typeof component>(reactPlugin, component, componentName);
+};
  
 export default withApplicationInsights;

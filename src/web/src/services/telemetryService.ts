@@ -5,14 +5,29 @@ import { createBrowserHistory } from 'history'
 import config from "../config";
 
 const plugin = new ReactPlugin();
-let applicationInsights: ApplicationInsights;
+let applicationInsights: ApplicationInsights | null = null;
+let isInitialized = false;
+let initFailed = false;
+
 export const reactPlugin = plugin;
 
+export const isApplicationInsightsEnabled = (): boolean => {
+    return isInitialized && !initFailed && applicationInsights !== null;
+};
+
 export const getApplicationInsights = (): ApplicationInsights | null => {
-    const browserHistory = createBrowserHistory({ window: window });
-    if (applicationInsights) {
+    if (isInitialized) {
         return applicationInsights;
     }
+
+    if (!config.observability.connectionString) {
+        console.warn("ApplicationInsights connection string not configured. Telemetry will be disabled.");
+        initFailed = true;
+        isInitialized = true;
+        return null;
+    }
+
+    const browserHistory = createBrowserHistory({ window: window });
 
     const ApplicationInsightsConfig: Snippet = {
         config: {
@@ -38,11 +53,14 @@ export const getApplicationInsights = (): ApplicationInsights | null => {
             }
         });
         applicationInsights = ai;
+        initFailed = false;
     } catch(err) {
         console.error("ApplicationInsights setup failed, ensure environment variable 'VITE_APPLICATIONINSIGHTS_CONNECTION_STRING' has been set.", err);
-        applicationInsights = null as unknown as ApplicationInsights;
+        applicationInsights = null;
+        initFailed = true;
     }
 
+    isInitialized = true;
     return applicationInsights;
 }
 

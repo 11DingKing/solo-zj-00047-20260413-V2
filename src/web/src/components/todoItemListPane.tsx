@@ -169,10 +169,8 @@ const TodoItemListPane: FC<TodoItemListPaneProps> = (props: TodoItemListPaneProp
 
     const [isCreating, setIsCreating] = useState(false);
 
-    const onFormSubmit = async (evt: FormEvent<HTMLFormElement>) => {
-        evt.preventDefault();
-
-        if (newItemName && props.onCreated && !isCreating) {
+    const createItem = async () => {
+        if (newItemName && props.onCreated && !isCreating && !props.disabled) {
             setIsCreating(true);
             const item: TodoItem = {
                 name: newItemName,
@@ -191,6 +189,15 @@ const TodoItemListPane: FC<TodoItemListPaneProps> = (props: TodoItemListPaneProp
                 setIsCreating(false);
             }
         }
+    }
+
+    const onFormSubmit = (evt: FormEvent<HTMLFormElement>) => {
+        evt.preventDefault();
+        createItem();
+    }
+
+    const onSearch = () => {
+        createItem();
     }
 
     const onNewItemChanged = (_evt?: FormEvent<HTMLInputElement>, value?: string) => {
@@ -299,7 +306,7 @@ const TodoItemListPane: FC<TodoItemListPaneProps> = (props: TodoItemListPaneProp
                 <form onSubmit={onFormSubmit}>
                     <Stack horizontal styles={stackStyles}>
                         <Stack.Item grow={1}>
-                            <SearchBox value={newItemName} placeholder="Add an item" iconProps={addIconProps} onChange={onNewItemChanged} disabled={props.disabled} />
+                            <SearchBox value={newItemName} placeholder="Add an item" iconProps={addIconProps} onChange={onNewItemChanged} onSearch={onSearch} disabled={props.disabled || isCreating} />
                         </Stack.Item>
                         <Stack.Item>
                             <TagPicker
